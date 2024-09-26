@@ -1,4 +1,3 @@
-
 <div class="account_manager w-100">
 
 	<div class="am-choice-box">
@@ -11,12 +10,14 @@
 					<i class="fad fa-address-card"></i> <?php _e("Please select a profile")?>
 				</div>
 			</div>
-	<!-- <div class="am-selected-arrow">
-		<i class="fal fa-chevron-up"></i>
-	</div> -->
+
+			<div class="am-selected-arrow">
+				<i class="fal fa-chevron-up"></i>
+			</div>
+
 		</div>
 
-		<!-- <div class="am-list-account border rounded bg-white check-wrap-all" style="display:block">
+		<div class="am-list-account border rounded bg-white check-wrap-all">
 			<div class="input-group input-group-solid rounded-0">
                 <input type="text" class="form-control search-input" data-search="search-accounts" placeholder="Search">
                 <span class="input-group-text m-r-1 border border-start border-top border-bottom border-gray-300"><i class="fad fa-search fs-18"></i></span>
@@ -99,7 +100,7 @@
 				</a>
 			</div>
 
-		</div> -->
+		</div>
 
 	</div>
 

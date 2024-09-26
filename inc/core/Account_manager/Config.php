@@ -1,12 +1,13 @@
 <?php
 return [
+    'platform' => 1,
     'id' => 'account_manager',
     'folder' => 'core',
     'name' => 'Account manager',
     'author' => 'Stackcode',
     'author_uri' => 'https://stackposts.com',
     'desc' => 'Customize system interface',
-    'icon' => 'bi bi-share-fill',
+    'icon' => 'fad fa-share-alt',
     'color' => '#002bff',
     'menu' => [
         'tab' => 3,

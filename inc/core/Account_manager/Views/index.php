@@ -9,7 +9,7 @@ if ( !$request->isAJAX() ) {
     <?php echo $this->section('content') ?>
     <?php _ec( $this->include('Core\Account_manager\Views\sidebar'), false);?>
 
-    <form class="main-wrapper flex-grow-1 n-scroll actionForm" action="<?php _ec( get_module_url("save") )?>" method="POST">
+    <form class="main-wrapper flex-grow-1 n-scroll actionForm <?php _ec( $config['id']."-main" )?>" action="<?php _ec( get_module_url("save") )?>" method="POST">
         <?php echo $content ?>
     </form>
 
