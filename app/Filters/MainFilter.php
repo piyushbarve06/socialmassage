@@ -35,11 +35,90 @@ class MainFilter implements FilterInterface
                 if(
                     (strpos($url, "/export"))
                 ){
-                    redirect_to( base_url("dashboard") );
+                    redirect_to( base_url("platform") );
                 }
             }
         }
 
+        /*
+        * 
+        */
+        $db = \Config\Database::connect();
+
+        $platform = (int)get_session("platform");
+        $domain_id = (int)get_session("push_domain");
+        
+        if(!$platform){
+            $platform_info = db_get("*", TB_PLATFORM, [], "is_default", "DESC");
+            if($platform_info){
+                $platform = $platform_info->platform_id;
+            }
+        }
+        
+        defined('PLATFORM') || define('PLATFORM', $platform);
+        defined('TEAM_IDS') || define('TEAM_IDS', get_session("team_id")); 
+        defined('USER_IDS') || define('USER_IDS', get_session('uid')); 
+
+        $team_info = db_get("*", TB_TEAM, ["ids" => TEAM_IDS]);
+        if($team_info){
+            defined('TEAM_ID') || define('TEAM_ID', $team_info->id); 
+            $team_info = serialize($team_info);
+        }else{
+            defined('TEAM_ID') || define('TEAM_ID', false); 
+            $team_info = false;
+        }
+
+        defined('TEAM_INFO') || define('TEAM_INFO', $team_info); 
+
+
+        $user_info = db_get("*", TB_USERS, ["ids" => USER_IDS]);
+        
+
+        if($user_info){
+            defined('USER_ID') || define('USER_ID', $user_info->id); 
+            $user_info = serialize($user_info);
+        }else{
+             defined('USER_ID') || define('USER_ID', false); 
+            $user_info = false;
+
+        }
+        defined('USER_INFO') || define('USER_INFO', $user_info); 
+
+        
+        $builder = $db->table(TB_OPTIONS);
+        $builder->select('name,value');
+        $query = $builder->get();
+        $data_options = $query->getResult();
+        $query->freeResult();
+
+        if($data_options){
+            $new_data_options = [];
+            foreach ($data_options as $option_item) {
+                $new_data_options[$option_item->name] = $option_item->value;
+            }
+            $data_options = serialize($new_data_options);
+        }else{
+            $data_options = false;
+        }
+
+        defined('SYSTEM_OPTIONS') || define('SYSTEM_OPTIONS', $data_options); 
+        if(!is_ajax()){
+            $current_module = find_modules( uri("segment", 1) );
+            if( $current_module && isset($current_module["platform"]) ){
+                if( $current_module["platform"] ){
+                    if(PLATFORM != $current_module['platform']){
+                        $platform_item = db_get("*", TB_PLATFORM, ["platform_id" => PLATFORM]);
+
+                        if(!empty($platform_item)){
+                            redirect_to( base_url( $platform_item->default_page ) );
+                        }else{
+                            redirect_to( base_url() );
+                        }
+                    }
+                }
+            }
+        }
+        //
 
         $module_paths = get_module_paths();
 

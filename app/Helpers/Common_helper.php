@@ -239,6 +239,27 @@ if(!function_exists('add_script_to_footer')){
     }
 }
 
+if (!function_exists('get_client_ip')) {
+    function get_client_ip() {
+        $ipaddress = '';
+        if (isset($_SERVER['HTTP_CLIENT_IP']))
+            $ipaddress = $_SERVER['HTTP_CLIENT_IP'];
+        else if(isset($_SERVER['HTTP_X_FORWARDED_FOR']))
+            $ipaddress = $_SERVER['HTTP_X_FORWARDED_FOR'];
+        else if(isset($_SERVER['HTTP_X_FORWARDED']))
+            $ipaddress = $_SERVER['HTTP_X_FORWARDED'];
+        else if(isset($_SERVER['HTTP_FORWARDED_FOR']))
+            $ipaddress = $_SERVER['HTTP_FORWARDED_FOR'];
+        else if(isset($_SERVER['HTTP_FORWARDED']))
+            $ipaddress = $_SERVER['HTTP_FORWARDED'];
+        else if(isset($_SERVER['REMOTE_ADDR']))
+            $ipaddress = $_SERVER['REMOTE_ADDR'];
+        else
+            $ipaddress = 'UNKNOWN';
+        return $ipaddress;
+    }
+}
+
 if (!function_exists('spintax')) {
     function spintax($str) {
         return preg_replace_callback("/{(.*?)}/", function ($match) {
@@ -409,6 +430,20 @@ if(!function_exists("get_curl")){
 if(!function_exists('now')){
     function now(){
         return date("Y-m-d H:i:s");
+    }
+}
+
+if(!function_exists('generateRandomString')){
+    function generateRandomString($length = 10) {
+        $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $charactersLength = strlen($characters);
+        $randomString = '';
+
+        for ($i = 0; $i < $length; $i++) {
+            $randomString .= $characters[random_int(0, $charactersLength - 1)];
+        }
+
+        return $randomString;
     }
 }
 
@@ -745,14 +780,18 @@ if (!function_exists('getDirContents')) {
 if(!function_exists('post')){
     function post($name, $filters = null, $flags = null){
         $request = \Config\Services::request();
-        return $request->getPostGet($name, $filters, $flags);
+        $string = $request->getPostGet($name, $filters, $flags);
+        $antiXss = new voku\helper\AntiXSS();
+        return $antiXss->xss_clean($string);
     }
 }
 
 if(!function_exists('get')){
     function get($name, $filters = null, $flags = null){
         $request = \Config\Services::request();
-        return $request->getPostGet($name, $filters, $flags);
+        $string = $request->getPostGet($name, $filters, $flags);
+        $antiXss = new voku\helper\AntiXSS();
+        return $antiXss->xss_clean($string);
     }
 }
 
@@ -1342,12 +1381,25 @@ if(!function_exists("validate")){
 
 if( ! function_exists("get_option") ){
     function get_option($key, $value = ""){
-        $option = db_get("value", "sp_options", "name = '".$key."'");
-        if(empty($option)){
-            db_insert("sp_options", [ "name" => $key, "value" => $value ] );
-            return $value;
-        }else{
-            return $option->value;
+        $option = true;
+        if (!SYSTEM_OPTIONS) {
+            $option = false;
+        }
+
+        $options = unserialize(SYSTEM_OPTIONS);
+
+        if(isset($options[$key])){
+            return $options[$key];
+        }
+
+        if($option){
+            $option_item = db_get("*", "sp_options", ['name' => $key]);
+            if(empty($option_item)){
+                db_insert("sp_options", [ "name" => $key, "value" => $value ] );
+                return $value;
+            }else{
+                return $option_item->value;
+            }
         }
     }
 }
@@ -1674,7 +1726,7 @@ if( !function_exists('is_image') ){
             $image_type = $a[2];
         }
 
-        if(in_array($image_type , array(1 , 2 , 3 , 6)))
+        if(in_array($image_type , array(1 , 2 , 3 , 6, 18)))
         {
             return true;
         }
@@ -1692,7 +1744,7 @@ if( !function_exists('is_image_url') ){
 
         $headers = array_change_key_case($headers, CASE_LOWER);
 
-        $img_types = ['image/jpeg', 'image/png', 'image/gif'];
+        $img_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
         if( isset( $headers['content-type'] ) && in_array( $headers['content-type'], $img_types ) ){
             return true;
@@ -1903,7 +1955,7 @@ if( !function_exists('save_img') ){
         $headers = @get_headers($img, 1, stream_context_create($stream_opts));
 
 
-        $img_types = ['image/jpeg', 'image/png', 'image/gif'];
+        $img_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
         $headers = array_change_key_case($headers, CASE_LOWER);
         if(!empty($headers) && isset( $headers['content-type'] )){
             
@@ -1917,7 +1969,7 @@ if( !function_exists('save_img') ){
             }else{
                 $file_type = mime2ext( $headers['content-type'] );
                 $path = $path.ids().".jpg";
-                if(in_array( $headers['content-type'] , $img_types, true) || ( isset($headers['server']) && $headers['server'] == 'AmazonS3' ) ){
+                if(in_array( $headers['content-type'] , $img_types, true) || ( isset($headers['server']) && $headers['server'] == 'AmazonS3' ) || $headers['content-type'] == 'application/octet-stream' ){
                     $data = file_get_contents($img, false, stream_context_create($stream_opts));
                     file_put_contents($path, $data);
                     return str_replace( WRITEPATH, "", $path);
@@ -2000,7 +2052,8 @@ if( !function_exists('detect_file_type') ){
             $ext  == "jpg" || 
             $ext == "jpeg" || 
             $ext == "png" || 
-            $ext == "gif" 
+            $ext == "gif" ||
+            $ext == "webp"
         ){
             return "image";
         }else if( 
@@ -2118,6 +2171,7 @@ if( !function_exists('mime2ext') ){
             'application/x-binary' => 'bin',
             'application/x-macbinary' => 'bin',
             'image/bmp' => 'bmp',
+            'image/webp' => 'webp',
             'image/x-bmp' => 'bmp',
             'image/x-bitmap' => 'bmp',
             'image/x-xbitmap' => 'bmp',
@@ -2319,7 +2373,7 @@ if (!function_exists('img')) {
             }else{
                 return get_theme_url()."Assets/img/file-not-found.jpg";
             }
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return get_theme_url()."Assets/img/file-not-found.jpg";
         }
     }
@@ -2863,6 +2917,7 @@ if (!function_exists("languages")) {
             "ro-RO" => "Romanian (Romania)",
             "ru-RU" => "Russian (Russia)",
             "sl-SI" => "Slovenian (Slovenia)",
+            "sk-SK" => "Slovakian (Slovakia)",
             "es-ES" => "Spanish (Spain)",
             "es-MX" => "Spanish (Mexico)",
             "sw-KE" => "Swahili (Kenya)",
